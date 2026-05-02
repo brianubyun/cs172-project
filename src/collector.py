@@ -296,7 +296,7 @@ def crawl(max_users=10000, seed_file="seed_file.json", max_posts=100, max_follow
 
             # Catch exception if API call fails
             try:
-                posts, cursor = fetchPost(user, cursor, rem_posts)
+                posts, cursor = fetchPost(user, cursor)
             except Exception as e:
                 print(f"Error fetching posts for {user}: {e}")
                 break
@@ -346,7 +346,7 @@ def crawl(max_users=10000, seed_file="seed_file.json", max_posts=100, max_follow
 
             # Catch exception if API call fails
             try:
-                followers, cursor = getFollowers(user, cursor, rem_followers)
+                followers, cursor = getFollowers(user, cursor)
             except Exception as e:
                 print(f"Error fetching followers for {user}: {e}")
                 break
