@@ -11,6 +11,8 @@ from bs4 import BeautifulSoup   # HTML Parser (convert HTML to string)
 BASE = "https://public.api.bsky.app/xrpc/"
 # Regular expression for extracting URLS
 URL_RE = re.compile(r'https?://\S+')
+SESSION = requests.Session()
+SESSION.headers.update({"User-Agent": "BlueskyCollector"})
 
 # Find all URLs within a post's content
 def extractURL(text):
@@ -25,7 +27,7 @@ def extractURL(text):
 def getPageTitle(url):
     try:
         # Make the HTTP request; wait for a maximum of 3 seconds
-        resp = requests.get(url, timeout=3, headers={"User-Agent": "BlueskyCollector"})
+        resp = SESSION.get(url, timeout=3)
         resp.raise_for_status()
 
         # Only download first 500KB of data
@@ -191,7 +193,7 @@ def fetchPost(handle, cursor=None, limit=100):
     url = BASE + "app.bsky.feed.getAuthorFeed"
 
     # Make HTTP request; wait 10 seconds
-    resp = requests.get(url, params=params, timeout=10)
+    resp = SESSION.get(url, params=params, timeout=10)
     resp.raise_for_status() # Throw exception in case the request fails
 
     # Turn the response (whatever Bluesky gave us) into JSON file for easy reading
@@ -225,7 +227,7 @@ def getFollowers(handle, cursor=None, limit=100):
     url = BASE + "app.bsky.graph.getFollowers"
 
     # Make HTTP request; wait 10 seconds
-    resp = requests.get(url, params=params, timeout=10)
+    resp = SESSION.get(url, params=params, timeout=10)
     resp.raise_for_status() # Throw exception in case the request fails
 
     # Turn the response (whatever Bluesky gave us) into JSON file for easy reading
