@@ -5,6 +5,8 @@ from collections import deque   # Used data structure as frontier
 import re                       # Used for regular expressions (to extract URLs)
 import requests                 # Used for making HTTP requests (internet communication)
 from bs4 import BeautifulSoup   # HTML Parser (convert HTML to string)
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # --- Global Variables ---
 # Base URL for calling Bluesky API
@@ -13,6 +15,19 @@ BASE = "https://public.api.bsky.app/xrpc/"
 URL_RE = re.compile(r'https?://\S+')
 SESSION = requests.Session()
 SESSION.headers.update({"User-Agent": "BlueskyCollector"})
+
+# workers based on CPU count
+NUM_PAGE_TITLE_WORKERS = min(24, max(8, os.cpu_count() or 1))
+# this is the thread pool
+title_fetcher_executor = ThreadPoolExecutor(max_workers=NUM_PAGE_TITLE_WORKERS)
+# dict for (URL -> title) cache
+url_title_cache = {}
+# it is possible for multiple threads to access the same memory simultaneously
+title_cache_lock = threading.Lock()
+# per thread storage for each worker to have its own requests.Session
+thread_session_store = threading.local()
+# sentinel
+NOT_CACHED = object()
 
 # Find all URLs within a post's content
 def extractURL(text):
@@ -23,11 +38,45 @@ def extractURL(text):
     # Retrieve all URLs found as a list
     return URL_RE.findall(text)
 
-# If there is a URL/HTML, extract the page title of that web page
-def getPageTitle(url):
+# get or create a thread-local requests session for page title fetching
+# we need this because requests sessions are not thread-safe
+def get_thread_session():
+    # see if session exists for the curen thread
+    session = getattr(thread_session_store, "session", None)
+    if session is None:
+        # create the new session
+        session = requests.Session()
+        session.headers.update({"User-Agent": "BlueskyCollector"})
+        thread_session_store.session = session
+    return session
+
+# read a cached title safely
+def get_cached_title(url):
+    with title_cache_lock:
+        return url_title_cache.get(url, NOT_CACHED)
+
+# write a cached title safely
+def cache_page_title(url, title):
+    with title_cache_lock:
+        url_title_cache[url] = title
+
+# retry wrapper
+def call_with_retry(func, *args, retries=3, base_delay=0.2, **kwargs):
+    for attempt in range(1, retries + 1):
+        try:
+            return func(*args, **kwargs)
+        except requests.exceptions.RequestException:
+            if attempt == retries:
+                raise
+            time.sleep(base_delay * attempt)
+
+# Fetch page title from a URL
+def get_page_title(url):
     try:
-        # Make the HTTP request; wait for a maximum of 3 seconds
-        resp = SESSION.get(url, timeout=3)
+        session = get_thread_session()
+
+        # Use separate connect/read timeouts to fail fast on dead hosts.
+        resp = session.get(url, timeout=(0.25, 0.4))
         resp.raise_for_status()
 
         # Only download first 500KB of data
@@ -182,7 +231,7 @@ class StorePosts:
             self.current_file.close()
 
 # Get a post from a user handle
-def fetchPost(handle, cursor=None, limit=100):
+def fetchPost(handle, cursor=None, limit=255):
     # Custom struct 
     params = {
         "actor": handle,
@@ -196,8 +245,8 @@ def fetchPost(handle, cursor=None, limit=100):
     # Piece together BASE url and FEED url to make API call (this is where we're searching for posts)
     url = BASE + "app.bsky.feed.getAuthorFeed"
 
-    # Make HTTP request; wait 10 seconds
-    resp = SESSION.get(url, params=params, timeout=10)
+    # Make HTTP request; wait 4 seconds
+    resp = SESSION.get(url, params=params, timeout=4)
     resp.raise_for_status() # Throw exception in case the request fails
 
     # Turn the response (whatever Bluesky gave us) into JSON file for easy reading
@@ -216,7 +265,7 @@ def fetchPost(handle, cursor=None, limit=100):
 
     return posts, next_cursor
 
-def getFollowers(handle, cursor=None, limit=100):
+def getFollowers(handle, cursor=None, limit=255):
     # Custom struct 
     params = {
         "actor": handle,
@@ -230,8 +279,8 @@ def getFollowers(handle, cursor=None, limit=100):
     # Piece together BASE url and FOLLOWER url to make API call (this is where we're searching for posts)
     url = BASE + "app.bsky.graph.getFollowers"
 
-    # Make HTTP request; wait 10 seconds
-    resp = SESSION.get(url, params=params, timeout=10)
+    # Make HTTP request; wait 4 seconds
+    resp = SESSION.get(url, params=params, timeout=4)
     resp.raise_for_status() # Throw exception in case the request fails
 
     # Turn the response (whatever Bluesky gave us) into JSON file for easy reading
@@ -276,102 +325,136 @@ def crawl(max_users=10000, seed_file="seed_file.json", max_posts=100, max_follow
     # Instantiate our StorePosts class to store posts
     writer = StorePosts(directory=output_dir)
 
-    # Keep looping while we still have users to visit or maximum amount of users crawled
-    # Alternatively we can also end if we reach the max_size of data we want to scrape
-    while frontier and len(visited) < max_users:
-        # Get first user
-        user = frontier.popleft()
+    try:
+        # Keep looping while we still have users to visit or maximum amount of users crawled
+        # Alternatively we can also end if we reach the max_size of data we want to scrape
+        while frontier and len(visited) < max_users:
+            # Get first user
+            user = frontier.popleft()
 
-        # If visited, skip
-        if user in visited:
-            continue
+            # If visited, skip
+            if user in visited:
+                continue
 
-        visited.add(user)
+            visited.add(user)
 
-        # Logging
-        print(f"Processing user: {user}")
+            # Logging
+            print(f"Processing user: {user}")
 
-        # Fetch posts
-        cursor = None
-        posts_col = 0
-        # Keep looping if using pagination (something broken into multiple parts)
-        while True:
-            rem_posts = max_posts - posts_col
-            if rem_posts <= 0:
-                break
-
-            # Catch exception if API call fails
-            try:
-                posts, cursor = fetchPost(user, cursor)
-            except Exception as e:
-                print(f"Error fetching posts for {user}: {e}")
-                break
-
-            # For these fetched posts, extract information
-            for post in posts:
-                if posts_col >= max_posts:
+            # Fetch posts
+            cursor = None
+            posts_col = 0
+            # Keep looping if using pagination (something broken into multiple parts)
+            while True:
+                rem_posts = max_posts - posts_col
+                if rem_posts <= 0:
                     break
 
-                # Get data we want from a post
-                post_data = extractFields(post)
-
-                # For all URLs, extract the page title
-                page_titles = {}
-                for url in post_data["urls"]:
-                    # Use a dictionary and store back at URL (key) so it matches back when we add the column back to post_data
-                    page_titles[url] = getPageTitle(url)
-                post_data["page_titles"] = page_titles
-
-                # Convert to a JSON line (to write to file)
-                line = json.dumps(post_data, ensure_ascii=False) + "\n"
-
-                # Write to file and calculate size
-                size = len(line.encode("utf-8"))
-                writer.write(line)
-                total_bytes += size
-                posts_col += 1
-
-                # If max_size is reached, end
-                if total_bytes >= max_size:
-                    print("Reached data size limit.")
-                    writer.close()
-                    return
-
-            # If pagination was not used (or ended), leave loop
-            if not cursor:
-                break
-
-        # Fetch followers and add to frontier
-        cursor = None
-        followers_col = 0
-        # Keep looping if using pagination (something broken into multiple parts)
-        while True:
-            rem_followers = max_followers - followers_col
-            if rem_followers <= 0:
-                break
-
-            # Catch exception if API call fails
-            try:
-                followers, cursor = getFollowers(user, cursor)
-            except Exception as e:
-                print(f"Error fetching followers for {user}: {e}")
-                break
-
-            # For a follower, check if visited
-            for follower in followers:
-                if followers_col >= max_followers:
+                # Catch exception if API call fails
+                try:
+                    posts, cursor = call_with_retry(fetchPost, user, cursor, limit=min(rem_posts, 255))
+                except Exception as e:
+                    print(f"Error fetching posts for {user}: {e}")
                     break
 
-                followers_col += 1
-                if follower not in visited:
-                    frontier.append(follower)
+                # For these fetched posts, extract information
+                for post in posts:
+                    if posts_col >= max_posts:
+                        break
 
-            # If pagination was not used (or ended), leave loop
-            if not cursor:
-                break
+                    # Get data we want from a post
+                    post_data = extractFields(post)
 
-        # Small delay every iteration to avoid abusing API calls
-        time.sleep(0.2)
+                    # For all URLs, extract the page title in parallel with caching
+                    page_titles = {}
+                    if post_data["urls"]:
+                        # deduplicate URLs and keep the original order
+                        unique_urls = list(dict.fromkeys(post_data["urls"]))
 
-    writer.close()
-    print("Crawl complete.")
+                        urls_needing_titles = []
+                        for url in unique_urls:
+                            # if we already have the title for the embedded URL, reuse it
+                            if post_data.get("embedded_url") == url and post_data.get("embedded_title"):
+                                title = post_data["embedded_title"]
+                                page_titles[url] = title
+                                cache_page_title(url, title)
+                                continue
+                            
+                            cached_value = get_cached_title(url)
+                            if cached_value is NOT_CACHED:
+                                urls_needing_titles.append(url)
+                            else:
+                                page_titles[url] = cached_value
+
+                        # submits all the URLS with missing titles to the thread pool to get their titles
+                        futures_by_url = {
+                            title_fetcher_executor.submit(get_page_title, url): url
+                            for url in urls_needing_titles
+                        }
+
+                        # iterate through the futures as they finish
+                        for future in as_completed(futures_by_url):
+                            url = futures_by_url[future]
+                            try:
+                                title = future.result()
+                            except Exception:
+                                title = None
+
+                            page_titles[url] = title
+                            cache_page_title(url, title)
+                    post_data["page_titles"] = page_titles
+
+                    # Convert to a JSON line (to write to file)
+                    line = json.dumps(post_data, ensure_ascii=False) + "\n"
+
+                    # Write to file and calculate size
+                    size = len(line.encode("utf-8"))
+                    writer.write(line)
+                    total_bytes += size
+                    posts_col += 1
+
+                    # If max_size is reached, end
+                    if total_bytes >= max_size:
+                        print("Reached data size limit.")
+                        return
+
+                # If pagination was not used (or ended), leave loop
+                if not cursor:
+                    break
+
+            # Fetch followers and add to frontier
+            cursor = None
+            followers_col = 0
+            # Keep looping if using pagination (something broken into multiple parts)
+            while True:
+                rem_followers = max_followers - followers_col
+                if rem_followers <= 0:
+                    break
+
+                # Catch exception if API call fails
+                try:
+                    followers, cursor = call_with_retry(getFollowers, user, cursor, limit=min(rem_followers, 255))
+                except Exception as e:
+                    print(f"Error fetching followers for {user}: {e}")
+                    break
+
+                # For a follower, check if visited
+                for follower in followers:
+                    if followers_col >= max_followers:
+                        break
+
+                    followers_col += 1
+                    if follower not in visited:
+                        frontier.append(follower)
+
+                # If pagination was not used (or ended), leave loop
+                if not cursor:
+                    break
+
+            # Small delay every iteration to avoid abusing API calls
+            time.sleep(0.01)
+
+        print("Crawl complete.")
+    finally:
+        writer.close()
+        title_fetcher_executor.shutdown(wait=True)
