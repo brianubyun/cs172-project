@@ -52,7 +52,7 @@ def main():
         "--max-size",
         type=int,
         default=524288000,
-        help="Maximum amount of data collector should scrape"
+        help="Maximum amount of data collector should scrape (bytes)"
     )
 
     # Pass our arguments

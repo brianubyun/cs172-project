@@ -132,6 +132,13 @@ class StorePosts:
 
         # Used for labeling files
         self.index = 0
+        for filename in os.listdir(directory):
+            if filename.startswith("posts_") and filename.endswith(".ndjson"):
+                try:
+                    index = int(filename[6:11])
+                    self.index = max(self.index, index + 1)
+                except (ValueError, IndexError):
+                    pass
 
     def _open_new(self):
         # Close open file
@@ -280,17 +287,25 @@ def crawl(max_users=10000, seed_file="seed_file.json", max_posts=100, max_follow
 
         # Fetch posts
         cursor = None
+        posts_col = 0
         # Keep looping if using pagination (something broken into multiple parts)
         while True:
+            rem_posts = max_posts - posts_col
+            if rem_posts <= 0:
+                break
+
             # Catch exception if API call fails
             try:
-                posts, cursor = fetchPost(user, cursor, max_posts)
+                posts, cursor = fetchPost(user, cursor, rem_posts)
             except Exception as e:
                 print(f"Error fetching posts for {user}: {e}")
                 break
 
             # For these fetched posts, extract information
             for post in posts:
+                if posts_col >= max_posts:
+                    break
+
                 # Get data we want from a post
                 post_data = extractFields(post)
 
@@ -308,6 +323,7 @@ def crawl(max_users=10000, seed_file="seed_file.json", max_posts=100, max_follow
                 size = len(line.encode("utf-8"))
                 writer.write(line)
                 total_bytes += size
+                posts_col += 1
 
                 # If max_size is reached, end
                 if total_bytes >= max_size:
@@ -321,17 +337,26 @@ def crawl(max_users=10000, seed_file="seed_file.json", max_posts=100, max_follow
 
         # Fetch followers and add to frontier
         cursor = None
+        followers_col = 0
         # Keep looping if using pagination (something broken into multiple parts)
         while True:
+            rem_followers = max_followers - followers_col
+            if rem_followers <= 0:
+                break
+
             # Catch exception if API call fails
             try:
-                followers, cursor = getFollowers(user, cursor, max_followers)
+                followers, cursor = getFollowers(user, cursor, rem_followers)
             except Exception as e:
                 print(f"Error fetching followers for {user}: {e}")
                 break
 
             # For a follower, check if visited
             for follower in followers:
+                if followers_col >= max_followers:
+                    break
+
+                followers_col += 1
                 if follower not in visited:
                     frontier.append(follower)
 
