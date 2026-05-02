@@ -1,4 +1,0 @@
-Put some sort of starting point here, like a user, keyword, feed, etc.
-// feed
-// user
-// keyword

@@ -1,1 +1,0 @@
-# This file allows us to run our program (linux)
