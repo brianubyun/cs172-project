@@ -95,6 +95,9 @@ def extractFields(post):
     # Username
     username = post.get("author", {}).get("handle")
 
+    # Timestamp
+    timestamp = post.get("record", {}).get("createdAt")
+
     # Data to return
     return {
         "post_id": uri,
@@ -106,6 +109,7 @@ def extractFields(post):
         "embedded_title": embedded_title,
         "embedded_description": embedded_description,
         "username": username,
+        "timestamp": timestamp,
         "likes": like_count,
         "reposts": repost_count,
         "replies": reply_count
@@ -367,7 +371,7 @@ def crawl(max_users=10000, seed_file="seed_file.json", max_posts=100, max_follow
                 break
 
         # Small delay every iteration to avoid abusing API calls
-        time.sleep(0.5)
+        time.sleep(0.2)
 
     writer.close()
     print("Crawl complete.")
