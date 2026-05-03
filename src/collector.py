@@ -231,7 +231,7 @@ class StorePosts:
             self.current_file.close()
 
 # Get a post from a user handle
-def fetchPost(handle, cursor=None, limit=255):
+def fetchPost(handle, cursor=None, limit=100):
     # Custom struct 
     params = {
         "actor": handle,
@@ -273,7 +273,7 @@ def fetchPost(handle, cursor=None, limit=255):
 
     return posts, next_cursor
 
-def getFollowers(handle, cursor=None, limit=255):
+def getFollowers(handle, cursor=None, limit=100):
     # Custom struct 
     params = {
         "actor": handle,
@@ -368,7 +368,7 @@ def crawl(max_users=10000, seed_file="seed_file.json", max_posts=100, max_follow
 
                 # Catch exception if API call fails
                 try:
-                    posts, cursor = call_with_retry(fetchPost, user, cursor, limit=min(rem_posts, 255))
+                    posts, cursor = call_with_retry(fetchPost, user, cursor, limit=rem_posts)
                 except Exception as e:
                     print(f"Error fetching posts for {user}: {e}")
                     break
@@ -449,7 +449,7 @@ def crawl(max_users=10000, seed_file="seed_file.json", max_posts=100, max_follow
 
                 # Catch exception if API call fails
                 try:
-                    followers, cursor = call_with_retry(getFollowers, user, cursor, limit=min(rem_followers, 255))
+                    followers, cursor = call_with_retry(getFollowers, user, cursor, limit=rem_followers)
                 except Exception as e:
                     print(f"Error fetching followers for {user}: {e}")
                     break
