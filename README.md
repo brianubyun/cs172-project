@@ -4,6 +4,12 @@ A simplified social network search engine
 
 ## How to Use
 
+Install required dependencies (Python 3.8+ required as well):
+
+```
+pip install requests beautifulsoup4
+```
+
 To use, run this command:
 
 ```
