@@ -246,16 +246,8 @@ def fetchPost(handle, cursor=None, limit=100):
     url = BASE + "app.bsky.feed.getAuthorFeed"
 
     # Make HTTP request; wait 4 seconds
-    try:
-        resp = SESSION.get(url, params=params, timeout=4)
-        resp.raise_for_status() # Throw exception in case the request fails
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 400 and limit > 100:
-            params["limit"] = 100
-            resp = SESSION.get(url, params=params, timeout=4)
-            resp.raise_for_status()
-        else:
-            raise
+    resp = SESSION.get(url, params=params, timeout=4)
+    resp.raise_for_status() # Throw exception in case the request fails
 
     # Turn the response (whatever Bluesky gave us) into JSON file for easy reading
     data = resp.json()
@@ -288,16 +280,8 @@ def getFollowers(handle, cursor=None, limit=100):
     url = BASE + "app.bsky.graph.getFollowers"
 
     # Make HTTP request; wait 4 seconds
-    try:
-        resp = SESSION.get(url, params=params, timeout=4)
-        resp.raise_for_status() # Throw exception in case the request fails
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 400 and limit > 100:
-            params["limit"] = 100
-            resp = SESSION.get(url, params=params, timeout=4)
-            resp.raise_for_status()
-        else:
-            raise
+    resp = SESSION.get(url, params=params, timeout=4)
+    resp.raise_for_status() # Throw exception in case the request fails
 
     # Turn the response (whatever Bluesky gave us) into JSON file for easy reading
     data = resp.json()
@@ -368,7 +352,7 @@ def crawl(max_users=10000, seed_file="seed_file.json", max_posts=100, max_follow
 
                 # Catch exception if API call fails
                 try:
-                    posts, cursor = call_with_retry(fetchPost, user, cursor, limit=rem_posts)
+                    posts, cursor = call_with_retry(fetchPost, user, cursor, limit=min(rem_posts, 100))
                 except Exception as e:
                     print(f"Error fetching posts for {user}: {e}")
                     break
@@ -449,7 +433,7 @@ def crawl(max_users=10000, seed_file="seed_file.json", max_posts=100, max_follow
 
                 # Catch exception if API call fails
                 try:
-                    followers, cursor = call_with_retry(getFollowers, user, cursor, limit=rem_followers)
+                    followers, cursor = call_with_retry(getFollowers, user, cursor, limit=min(rem_followers, 100))
                 except Exception as e:
                     print(f"Error fetching followers for {user}: {e}")
                     break
