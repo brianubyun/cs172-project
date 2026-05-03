@@ -10,10 +10,23 @@ Install required dependencies (Python 3.8+ required as well):
 pip install requests beautifulsoup4
 ```
 
-To use, run this command:
+If above does not work, try:
 
 ```
+py -m pip install requests beautifulsoup4
+```
+
+To use, run this command:
+
+**For Windows:**
+```
 ./run_collector.bat --seed <FILE_PATH/FILE_NAME>.json --max-users <NUM> --max-posts <NUM>
+  --max-followers <NUM> --out <DIR> --max-size <NUM>
+```
+
+**For Linux/Mac:**
+```
+chmod +x run_collector.sh && ./run_collector.sh --seed <FILE_PATH/FILE_NAME>.json --max-users <NUM> --max-posts <NUM>
   --max-followers <NUM> --out <DIR> --max-size <NUM>
 ```
 
@@ -30,6 +43,12 @@ where:
 
 If you wanted to run the collector that only crawls up to 100 people and fetches 10 posts and followers per person with a max storage size of 5MB:
 
+**For Windows:**
 ```
 ./run_collector.bat --seed src/seed_file.json --max-users 100 --max-posts 10 --max-followers 10 --out data/ --max-size 5242880
+```
+
+**For Linux/Mac:**
+```
+chmod +x run_collector.sh && ./run_collector.bat --seed src/seed_file.json --max-users 100 --max-posts 10 --max-followers 10 --out data/ --max-size 5242880
 ```
