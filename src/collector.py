@@ -246,8 +246,16 @@ def fetchPost(handle, cursor=None, limit=255):
     url = BASE + "app.bsky.feed.getAuthorFeed"
 
     # Make HTTP request; wait 4 seconds
-    resp = SESSION.get(url, params=params, timeout=4)
-    resp.raise_for_status() # Throw exception in case the request fails
+    try:
+        resp = SESSION.get(url, params=params, timeout=4)
+        resp.raise_for_status() # Throw exception in case the request fails
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 400 and limit > 100:
+            params["limit"] = 100
+            resp = SESSION.get(url, params=params, timeout=4)
+            resp.raise_for_status()
+        else:
+            raise
 
     # Turn the response (whatever Bluesky gave us) into JSON file for easy reading
     data = resp.json()
@@ -280,8 +288,16 @@ def getFollowers(handle, cursor=None, limit=255):
     url = BASE + "app.bsky.graph.getFollowers"
 
     # Make HTTP request; wait 4 seconds
-    resp = SESSION.get(url, params=params, timeout=4)
-    resp.raise_for_status() # Throw exception in case the request fails
+    try:
+        resp = SESSION.get(url, params=params, timeout=4)
+        resp.raise_for_status() # Throw exception in case the request fails
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 400 and limit > 100:
+            params["limit"] = 100
+            resp = SESSION.get(url, params=params, timeout=4)
+            resp.raise_for_status()
+        else:
+            raise
 
     # Turn the response (whatever Bluesky gave us) into JSON file for easy reading
     data = resp.json()
