@@ -20,14 +20,12 @@ To use, run this command:
 
 **For Windows:**
 ```
-./run_collector.bat --seed <FILE_PATH/FILE_NAME>.json --max-users <NUM> --max-posts <NUM>
-  --max-followers <NUM> --out <DIR> --max-size <NUM>
+./run_collector.bat --seed <FILE_PATH/FILE_NAME>.json --max-users <NUM> --max-posts <NUM> --max-followers <NUM> --out <DIR> --max-size <NUM>
 ```
 
 **For Linux/Mac:**
 ```
-chmod +x run_collector.sh && ./run_collector.sh --seed <FILE_PATH/FILE_NAME>.json --max-users <NUM> --max-posts <NUM>
-  --max-followers <NUM> --out <DIR> --max-size <NUM>
+chmod +x run_collector.sh && ./run_collector.sh --seed <FILE_PATH/FILE_NAME>.json --max-users <NUM> --max-posts <NUM> --max-followers <NUM> --out <DIR> --max-size <NUM>
 ```
 
 where:
