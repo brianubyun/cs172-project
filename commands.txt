@@ -1,0 +1,22 @@
+docker start elasticsearch
+
+need to use 8.11.1 version:
+pip install -r requirements.txt
+
+this is for creating the empty es container:
+docker run -d --name elasticsearch -p 9200:9200 -e "discovery.type=single-node" -e "xpack.security.enabled=false" docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+
+other docker commands:
+
+docker stop elasticsearch
+
+docker ps
+docker ps -a
+
+full reset:
+docker rm -f elasticsearch
+
+other commands:
+
+curl 'http://127.0.0.1:9200/_cat/indices?v&s=index'
+curl 'http://127.0.0.1:9200/bluesky_posts?pretty'  
