@@ -20,3 +20,15 @@ other commands:
 
 curl 'http://127.0.0.1:9200/_cat/indices?v&s=index'
 curl 'http://127.0.0.1:9200/bluesky_posts?pretty'  
+
+---------------
+
+then for kibana:
+
+docker run -d --name kibana --link elasticsearch:elasticsearch -p 5601:5601 docker.elastic.co/kibana/kibana:8.11.1
+
+Run this in dev tools kibana console to confirm the index is connected and working:
+GET bluesky_posts/_search
+{
+  "query": { "match_all": {} }
+}
