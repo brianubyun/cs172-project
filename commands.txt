@@ -1,3 +1,5 @@
+important commands: 
+
 docker start elasticsearch
 
 need to use 8.11.1 version:
@@ -5,6 +7,9 @@ pip install -r requirements.txt
 
 this is for creating the empty es container:
 docker run -d --name elasticsearch -p 9200:9200 -e "discovery.type=single-node" -e "xpack.security.enabled=false" docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+
+to run web interface locally (after running all commands above):
+python src/app.py
 
 other docker commands:
 
