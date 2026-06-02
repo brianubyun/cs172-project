@@ -59,7 +59,7 @@ def search():
                         # Number of likes a post has boosts score (likes don't mean much)
                         "field_value_factor": {
                             "field": "likes",
-                            "factor": 0.05,
+                            "factor": 0.001,
                             "modifier": "sqrt",
                             "missing": 0
                         }
@@ -68,7 +68,7 @@ def search():
                         # Number of reposts a post has boosts score (reposts weight more)
                         "field_value_factor": {
                             "field": "reposts",
-                            "factor": 0.1,
+                            "factor": 0.005,
                             "modifier": "sqrt",
                             "missing": 0
                         }
@@ -77,7 +77,7 @@ def search():
                         # Number of replies a post has boosts score (replies mean engagement)
                         "field_value_factor": {
                             "field": "replies",
-                            "factor": 0.5,
+                            "factor": 0.01,
                             "modifier": "sqrt",
                             "missing": 0
                         }
