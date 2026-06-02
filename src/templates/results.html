@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Output</title>
+        <style>
+            .banner {
+                background-color: black; /* Black background*/
+                color: white; /* White text*/
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body> 
+        <div class="banner"> <!-- Same banner as index.html; copying similar template from discussion slides (Slide 1 S23) -->
+            <h1>Bluesky Flask Web-based Search Interface</h1>
+        </div>
+
+        <!-- Display query/search result user inputted -->
+        <p><strong>Query: {{ query }}</strong></p> 
+
+        <!-- Check if results exist; should come sorted from best to worst already so just print each result out -->
+        {% if results %}
+            {% for result in results %}
+            <div class="results">
+                <p class="result-number">{{ loop.index }} -- Score is {{ result.score }}</p>
+                <!-- Display result with embedded title and make it a clickable link with embedded URL -->
+                <a href="{{ result.embedded_url}}">{{ result.embedded_title }}</a>
+
+                <!-- Print out the text info about each result -->
+                <p>{{ result.text }}</p>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Go back to default home page for more searches -->
+        <a href="/"><strong>Search Again</strong></a>
+    </body>
+</html>

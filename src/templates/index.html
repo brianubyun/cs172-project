@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>{{ title }}</title>
+        <style>
+            /*Banner background for <body> part*/
+            .banner {
+                background-color: black; /* Black background*/
+                color: white; /* White text*/
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="banner">
+            <h1>Bluesky Flask Web-based Search Interface</h1>
+
+            <!-- Builds URL by adding /search when Search button is submitted/pressed and also adds query so easier to get query from URL with app.py -->
+            <!-- /search is added since in app.py, we can route /search to the search() function, add query to URL so we can print out query or what user submitted with results -->
+            <form action="/search" method="GET">
+                <input type="text" name="query" placeholder="Search here" required>
+                <button type="submit">Search</button>
+            </form>
+        </div>
+    </body>
+</html>
