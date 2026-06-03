@@ -21,6 +21,19 @@
             <form action="/search" method="GET">
                 <input type="text" name="query" placeholder="Search here" required>
                 <button type="submit">Search</button>
+
+                <div style="position: absolute; right: 25%; top: 25%; border-radius: 15px; box-shadow: 0px 3px 6px -1px rgba(0, 0, 0, 0.20); padding: 15px; border-style: solid; border-color: rgb(202, 202, 202); border-width: 1px;">
+                    <p style="font-size: 24px;margin: 0px 0px 10px 0px;">Order By</p>
+                    <div style="display: flex; flex-direction: column; gap: 5px; padding-bottom: 15px;">
+                        <label> <input type="checkbox" name="sort" value="relevance" {% if "relevance" in selected_filters %}checked{% endif %}> Relevance </label>
+                        <label> <input type="checkbox" name="sort" value="time_new" {% if "time_new" in selected_filters %}checked{% endif %}> Time (NEW) </label>
+                        <label> <input type="checkbox" name="sort" value="time_old" {% if "time_old" in selected_filters %}checked{% endif %}> Time (OLD) </label>
+                        <label> <input type="checkbox" name="sort" value="likes" {% if "likes" in selected_filters %}checked{% endif %}> Likes </label>
+                        <label> <input type="checkbox" name="sort" value="reposts" {% if "reposts" in selected_filters %}checked{% endif %}> Reposts </label>
+                        <label> <input type="checkbox" name="sort" value="replies" {% if "replies" in selected_filters %}checked{% endif %}> Replies </label>
+                    </div>
+                    <button type="submit">Apply</button>
+                </div>
             </form>
         </div>
     </body>

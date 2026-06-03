@@ -1,9 +1,10 @@
-import re   # Regular Expression Library
-
 #Web-based interface with Flask
+
+import re   # Regular Expression Library
 
 from flask import Flask, render_template, request
 from elasticsearch import Elasticsearch
+from datetime import datetime, timezone   # Converting JSON time for sorting
 
 #Initializing application and also elasticsearch for searching our data
 app = Flask(__name__)
@@ -131,12 +132,20 @@ def search():
         clean_post_id = hit["_source"].get("post_id").split("/")[-1]
         post_url = f"https://bsky.app/profile/{hit["_source"].get("username")}/post/{clean_post_id}"
 
+        # Convert timestamp into readable time
+        ts = hit["_source"].get("timestamp")
+        readable_time = None
+        if ts:
+            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            readable_time = dt.strftime("%b %d, %Y at %I:%M %p")
+
         results.append({
             "score": round(hit["_score"], 2),
             "text": hit["_source"].get("text"),
             "post_id": hit["_source"].get("post_id"),
             "username": hit["_source"].get("username"),
             "timestamp": hit["_source"].get("timestamp"),
+            "readable_time": readable_time,
             "likes": hit["_source"].get("likes"),
             "reposts": hit["_source"].get("reposts"),
             "replies": hit["_source"].get("replies"),
@@ -146,7 +155,14 @@ def search():
             "post_url": post_url,
         })
 
-    return render_template("results.html", query=query, results=results)
+    selected_filters = request.args.getlist("sort")
+
+    return render_template(
+        "results.html",
+        query=query,
+        results=results,
+        selected_filters=selected_filters
+    )
 
 # Make it known to Flask
 @app.template_filter("make_snippet")
@@ -238,6 +254,40 @@ def highlight(text, query):
         text,
         flags=re.IGNORECASE
     )
+
+@app.template_filter("sort")
+def sort_results(results, keys):
+    # Get current date
+    now = datetime.now(timezone.utc)
+
+    # Recompute scores to re-order list based on user selected filters/ordering
+    def compute_score(r):
+        score = 0
+
+        # For each filer/ordering option chosen
+        for key in keys:
+            if key == "likes":
+                score += r.get("likes", 0)
+            elif key == "reposts":
+                score += r.get("reposts", 0)
+            elif key == "replies":
+                score += r.get("replies", 0)
+            elif key == "time_new":
+                ts = r.get("timestamp")
+                if ts:
+                    post_time = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                    age = (now - post_time).total_seconds()
+                    score += 1 / (1 + age)  # recency score
+            elif key == "time_old":
+                ts = r.get("timestamp")
+                if ts:
+                    post_time = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                    age = (now - post_time).total_seconds()
+                    score += age    # recency score
+                    
+        return score
+
+    return sorted(results, key=compute_score, reverse=True)
 
 #Running app locally
 if __name__ == "__main__":

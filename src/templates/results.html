@@ -19,65 +19,98 @@
 
         <div style="margin-left: 10%;">
             <form action="/search" method="GET">
-                <input type="text" name="query" value="{{query}}"" required>
+                <input type="text" name="query" value="{{query}}" required>
                 <button type="submit">Search</button>
-            </form>
 
-            <!-- Check if results exist; should come sorted from best to worst already so just print each result out -->
-            {% if results %}
-                {% for result in results %}
-                <div class="results" style="max-width: 50%;">
-                    <div style="background-color: #1f5fff; height: 10px; border-radius: 20px 20px 0px 0px; margin-top: 15px;"></div>
-                    <div style="padding: 15px; border-radius: 0px 0px 20px 20px; background: #f8feff; box-shadow: 0px 3px 6px -1px rgba(0, 0, 0, 0.20); padding-bottom: 25px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div class="result-number" style="font-size: 48px; font-weight: bold;">
-                                {% if loop.index == 1 %}
-                                    <p style="color: rgb(224, 224, 0); margin: 0;">{{ loop.index }}</p>
-                                {% elif loop.index == 2%}
-                                    <p style="color: rgb(173, 202, 207); margin: 0;">{{ loop.index }}</p>
-                                {% elif loop.index == 3%}
-                                    <p style="color: rgb(161, 100, 66); margin: 0;">{{ loop.index }}</p>
-                                {% else %}
-                                    <p style="color: rgb(0, 0, 0); margin: 0;">{{ loop.index }}</p>
-                                {% endif %}
+                <!-- Check if results exist; should come sorted from best to worst already so just print each result out -->
+                {% if results %}
+                    <div style="position: absolute; right: 25%; top: 25%; border-radius: 15px; box-shadow: 0px 3px 6px -1px rgba(0, 0, 0, 0.20); padding: 15px; border-style: solid; border-color: rgb(202, 202, 202); border-width: 1px;">
+                        <p style="font-size: 24px;margin: 0px 0px 10px 0px;">Order By</p>
+                        <div style="display: flex; flex-direction: column; gap: 5px; padding-bottom: 15px;">
+                            <label> <input type="checkbox" name="sort" value="relevance" {% if "relevance" in selected_filters %}checked{% endif %}> Relevance </label>
+                            <label> <input type="checkbox" name="sort" value="time_new" {% if "time_new" in selected_filters %}checked{% endif %}> Time (NEW) </label>
+                            <label> <input type="checkbox" name="sort" value="time_old" {% if "time_old" in selected_filters %}checked{% endif %}> Time (OLD) </label>
+                            <label> <input type="checkbox" name="sort" value="likes" {% if "likes" in selected_filters %}checked{% endif %}> Likes </label>
+                            <label> <input type="checkbox" name="sort" value="reposts" {% if "reposts" in selected_filters %}checked{% endif %}> Reposts </label>
+                            <label> <input type="checkbox" name="sort" value="replies" {% if "replies" in selected_filters %}checked{% endif %}> Replies </label>
+                        </div>
+                        <button type="submit">Apply</button>
+                    </div>
+                    {% set sorted_results = results | sort(selected_filters) %}
+                    {% for result in sorted_results %}
+                    <div class="results" style="max-width: 50%;">
+                        <div style="background-color: #1f5fff; height: 10px; border-radius: 20px 20px 0px 0px; margin-top: 15px;"></div>
+                        <div style="padding: 15px; border-radius: 0px 0px 20px 20px; background: #f8feff; box-shadow: 0px 3px 6px -1px rgba(0, 0, 0, 0.20); padding-bottom: 25px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div class="result-number" style="font-size: 48px; font-weight: bold;">
+                                    {% if loop.index == 1 %}
+                                        <p style="color: rgb(224, 224, 0); margin: 0;">{{ loop.index }}</p>
+                                    {% elif loop.index == 2%}
+                                        <p style="color: rgb(173, 202, 207); margin: 0;">{{ loop.index }}</p>
+                                    {% elif loop.index == 3%}
+                                        <p style="color: rgb(161, 100, 66); margin: 0;">{{ loop.index }}</p>
+                                    {% else %}
+                                        <p style="color: rgb(0, 0, 0); margin: 0;">{{ loop.index }}</p>
+                                    {% endif %}
+                                </div>
+                                <div style="font-size: 18px;">
+                                    <p style="font-weight: bold; margin: 0;">Score: {{ result.score }}</p>
+                                    {{ result.username | highlight(query) | safe }}
+                                </div>
                             </div>
-                            <div style="font-size: 18px;">
-                                <p style="font-weight: bold; margin: 0;">Score: {{ result.score }}</p>
-                                {{ result.username | highlight(query) | safe }}
+
+                            <!-- Display link to actual post itself -->
+                            <a href="{{ result.post_url }}" style="margin-bottom: 15px; font-size: 14px;">{{ result.post_url }}</a>
+
+                            <!-- Print out the snippet (relevant part) about each result -->
+                            {{ result.text | make_snippet(query) | safe }}
+
+                            <!-- Display images if applicable -->
+                            {% if result.images %}
+                                <div class="image-list" style="text-align: center;">
+                                    {% for img in result.images %}
+                                        <img src="{{ img }}" alt="image" style="max-width: 200px; max-height: 200px; margin: 4px; border-radius: 5px;">
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            <!-- If there's an embedded URl -->
+                            {% if result.embedded_url %}
+                                <!-- Display result with embedded title and make it a clickable link with embedded URL -->
+                                <div style="display: flex;">
+                                    <a href="{{ result.embedded_url }}" style="margin: 0;">
+                                        <i class="fa fa-external-link" style="font-size:14px; margin-right: 5px;"></i>
+                                        {{ result.embedded_title | highlight(query) | safe }}
+                                    </a>
+                                </div>
+                            {% endif %}
+
+                            <!-- Display post data such as timestamp, likes, replies, etc. -->
+                            <div style="display: flex; justify-content: center; gap: 25px; margin-top: 20px;">
+                                <div>
+                                    <i class="fa-solid fa-clock" style="color: #1f5fff"></i>
+                                    {{ result.readable_time }}
+                                </div>
+                                <div>
+                                    <i class="fa-solid fa-thumbs-up" style="color: #1f5fff"></i>
+                                    {{ result.likes }}
+                                </div>
+                                <div>
+                                    <i class="fa-solid fa-arrows-rotate" style="color: #1f5fff"></i>
+                                    {{ result.reposts }}
+                                </div>
+                                <div>
+                                    <i class="fa-solid fa-message" style="color: #1f5fff"></i>
+                                    {{ result.replies }}
+                                </div>
                             </div>
                         </div>
-
-                        <!-- Display link to actual post itself -->
-                        <a href="{{ result.post_url }}" style="margin-bottom: 15px; font-size: 14px;">{{ result.post_url }}</a>
-
-                        <!-- Print out the snippet (relevant part) about each result -->
-                        {{ result.text | make_snippet(query) | safe }}
-
-                        <!-- Display images if applicable -->
-                        {% if result.images %}
-                            <div class="image-list" style="text-align: center;">
-                                {% for img in result.images %}
-                                    <img src="{{ img }}" alt="image" style="max-width: 200px; max-height: 200px; margin: 4px; border-radius: 5px;">
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-
-                        <!-- If there's an embedded URl -->
-                        {% if result.embedded_url %}
-                            <!-- Display result with embedded title and make it a clickable link with embedded URL -->
-                            <div style="display: flex;">
-                                <a href="{{ result.embedded_url }}" style="margin: 0;">
-                                    <i class="fa fa-external-link" style="font-size:14px; margin-right: 5px;"></i>
-                                    {{ result.embedded_title | highlight(query) | safe }}
-                                </a>
-                            </div>
-                        {% endif %}
                     </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <p style="display: flex; justify-content: center; font-size: 48px;">No results found.</p>
-            {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <p style="display: flex; justify-content: center; font-size: 48px;">No results found.</p>
+                {% endif %}
+            </form>
         </div>
     </body>
 </html>
