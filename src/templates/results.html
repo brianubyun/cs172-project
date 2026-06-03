@@ -5,72 +5,79 @@
         <title>Output</title>
         <style>
             .banner {
-                background-color: black; /* Black background*/
+                background-color: #1f5fff;
                 color: white; /* White text*/
                 text-align: center;
             }
         </style>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     </head>
     <body> 
-        <div class="banner"> <!-- Same banner as index.html; copying similar template from discussion slides (Slide 1 S23) -->
+        <div class="banner">
             <h1>Bluesky Flask Web-based Search Interface</h1>
         </div>
 
-        <form action="/search" method="GET">
-            <input type="text" name="query" value={{query}} required>
-            <button type="submit">Search</button>
-        </form>
+        <div style="margin-left: 10%;">
+            <form action="/search" method="GET">
+                <input type="text" name="query" value="{{query}}"" required>
+                <button type="submit">Search</button>
+            </form>
 
-        <!-- Check if results exist; should come sorted from best to worst already so just print each result out -->
-        {% if results %}
-            {% for result in results %}
-            <div class="results">
-                <div style="background-color: #1f5fff; height: 10px; border-radius: 20px 20px 0px 0px; margin-top: 15px;"></div>
-                <div style="padding: 15px; border-radius: 0px 0px 20px 20px; background: #f8feff; box-shadow: 0px 3px 6px -1px rgba(0, 0, 0, 0.20);">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                        <div class="result-number" style="font-size: 48px; font-weight: bold;">
-                            {% if loop.index == 1 %}
-                                <p style="color: rgb(224, 224, 0); margin: 0;">{{ loop.index }}</p>
-                            {% elif loop.index == 2%}
-                                <p style="color: rgb(173, 202, 207); margin: 0;">{{ loop.index }}</p>
-                            {% elif loop.index == 3%}
-                                <p style="color: rgb(161, 100, 66); margin: 0;">{{ loop.index }}</p>
-                            {% else %}
-                                <p style="color: rgb(0, 0, 0); margin: 0;">{{ loop.index }}</p>
-                            {% endif %}
+            <!-- Check if results exist; should come sorted from best to worst already so just print each result out -->
+            {% if results %}
+                {% for result in results %}
+                <div class="results" style="max-width: 50%;">
+                    <div style="background-color: #1f5fff; height: 10px; border-radius: 20px 20px 0px 0px; margin-top: 15px;"></div>
+                    <div style="padding: 15px; border-radius: 0px 0px 20px 20px; background: #f8feff; box-shadow: 0px 3px 6px -1px rgba(0, 0, 0, 0.20); padding-bottom: 25px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="result-number" style="font-size: 48px; font-weight: bold;">
+                                {% if loop.index == 1 %}
+                                    <p style="color: rgb(224, 224, 0); margin: 0;">{{ loop.index }}</p>
+                                {% elif loop.index == 2%}
+                                    <p style="color: rgb(173, 202, 207); margin: 0;">{{ loop.index }}</p>
+                                {% elif loop.index == 3%}
+                                    <p style="color: rgb(161, 100, 66); margin: 0;">{{ loop.index }}</p>
+                                {% else %}
+                                    <p style="color: rgb(0, 0, 0); margin: 0;">{{ loop.index }}</p>
+                                {% endif %}
+                            </div>
+                            <div style="font-size: 18px;">
+                                <p style="font-weight: bold; margin: 0;">Score: {{ result.score }}</p>
+                                {{ result.username | highlight(query) | safe }}
+                            </div>
                         </div>
-                        <div style="font-size: 18px;">
-                            <p style="font-weight: bold; margin: 0;">Score: {{ result.score }}</p>
-                            <p style="margin: 0;">{{ result.username }}</p>
-                        </div>
+
+                        <!-- Display link to actual post itself -->
+                        <a href="{{ result.post_url }}" style="margin-bottom: 15px; font-size: 14px;">{{ result.post_url }}</a>
+
+                        <!-- Print out the snippet (relevant part) about each result -->
+                        {{ result.text | make_snippet(query) | safe }}
+
+                        <!-- Display images if applicable -->
+                        {% if result.images %}
+                            <div class="image-list" style="text-align: center;">
+                                {% for img in result.images %}
+                                    <img src="{{ img }}" alt="image" style="max-width: 200px; max-height: 200px; margin: 4px; border-radius: 5px;">
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <!-- If there's an embedded URl -->
+                        {% if result.embedded_url %}
+                            <!-- Display result with embedded title and make it a clickable link with embedded URL -->
+                            <div style="display: flex;">
+                                <a href="{{ result.embedded_url }}" style="margin: 0;">
+                                    <i class="fa fa-external-link" style="font-size:14px; margin-right: 5px;"></i>
+                                    {{ result.embedded_title | highlight(query) | safe }}
+                                </a>
+                            </div>
+                        {% endif %}
                     </div>
-
-                    <!-- Display link to actual post itself -->
-                    <a href="{{ result.post_url }}">{{ result.post_url }}</a>
-
-                    <!-- Print out the text info about each result -->
-                    <p>{{ result.text }}</p>
-
-                    <!-- Display images if applicable -->
-                    {% if result.images %}
-                        <div class="image-list">
-                            {% for img in result.images %}
-                                <img src="{{ img }}" alt="image" style="max-width: 200px;">
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-
-                    <!-- If there's an embedded URl -->
-                    {% if result.embedded_url %}
-                        <!-- Display result with embedded title and make it a clickable link with embedded URL -->
-                        <div style="display: flex;">
-                            <p style="margin: 0;">Embedded Link: </p>
-                            <a href="{{ result.embedded_url }}" style="margin: 0;">{{ result.embedded_title }}</a>
-                        </div>
-                    {% endif %}
                 </div>
-            </div>
-            {% endfor %}
-        {% endif %}
+                {% endfor %}
+            {% else %}
+                <p style="display: flex; justify-content: center; font-size: 48px;">No results found.</p>
+            {% endif %}
+        </div>
     </body>
 </html>

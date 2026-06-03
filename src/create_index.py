@@ -40,6 +40,10 @@ def iter_docs(path):
             except Exception:
                 continue
 
+            # Extract clean username (without .bluesky.social or other metadata)
+            raw_username = obj.get("username", "")
+            username_clean = raw_username.split(".")[0]
+
             # normalize the document to have a consistent shape
             doc = {
                 "post_id": obj.get("post_id"),
@@ -57,6 +61,7 @@ def iter_docs(path):
                 "embedded_title": obj.get("embedded_title"),
                 "embedded_description": obj.get("embedded_description"),
                 "username": obj.get("username"),
+                "username_clean": username_clean,
                 "timestamp": obj.get("timestamp"),
                 "likes": obj.get("likes"),
                 "reposts": obj.get("reposts"),
