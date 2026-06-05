@@ -50,3 +50,36 @@ If you wanted to run the collector that only crawls up to 100 people and fetches
 ```
 chmod +x run_collector.sh && ./run_collector.bat --seed src/seed_file.json --max-users 100 --max-posts 10 --max-followers 10 --out data/ --max-size 5242880
 ```
+
+### Instructions for Deployment (Searching)
+First, download [Docker](https://www.docker.com/products/docker-desktop/) (store indices in Docker container).
+
+Next, make sure you install all the required dependencies/packages in our text file:
+```
+pip install -r requirements.txt
+```
+
+
+The program can be run with the following executable command (Windows):
+```
+./run_indexer.bat
+```
+
+
+For Linux/Mac:
+```
+chmod +x run_indexer.sh && ./run_indexer.sh
+```
+
+## Web Application (Flask)
+
+The web interface can be run with the following executable command (Windows):
+```
+./run_webapp.bat
+```
+
+
+For Linux/Mac:
+```
+chmod +x run_webapp.sh && ./run_webapp.sh
+```
